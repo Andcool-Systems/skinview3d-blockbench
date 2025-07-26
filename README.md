@@ -19,7 +19,7 @@ npm install skinview3d-blockbench
 
 ```ts
 import { SkinViewer } from 'skinview3d';
-import { BlockbenchAnimationProvider } from 'skinview3d-blockbench';
+import { SkinViewBlockbench } from 'skinview3d-blockbench';
 import animation from './player.animation.json';
 
 const viewer = new SkinViewer({
@@ -29,7 +29,7 @@ const viewer = new SkinViewer({
   skin: "/skin.png"
 });
 
-viewer.animation = new BlockbenchAnimationProvider({
+viewer.animation = new SkinViewBlockbench({
   // The animation object. Can be imported as JSON or loaded via fetch.
   animation: animation,
 
