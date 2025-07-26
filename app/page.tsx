@@ -15,7 +15,8 @@ export default function Home() {
             canvas: canvasRef.current,
             width: 500,
             height: 500,
-            skin: '/skin.png'
+            skin: '/skin.png',
+            panorama: '/panorama.png'
         });
 
         canvasRef.current.width = 500;
@@ -23,8 +24,7 @@ export default function Home() {
 
         viewer.animation = new BlockbenchAnimationProvider({
             animation: bb_anim,
-            animationName: '1_anim',
-            bonesOverrides: { leftLeg: 'll' }
+            animationName: '1_anim2'
         });
     }, []);
 

@@ -5,8 +5,10 @@ import {
     BonesAnimation,
     BonesOverrides,
     ExtendedKeyframe,
+    KeyframesList,
     KeyframeValue,
-    NormalizedBonesNames
+    NormalizedBonesNames,
+    SingleKeyframeListItem
 } from './types';
 
 import { Euler, MathUtils } from 'three';
@@ -18,6 +20,7 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
     config_params: BlockbenchAnimationProviderProps;
     animation: AnimationsObject;
     bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
+    keyframes_list: Record<string, KeyframesList>;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -38,6 +41,7 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
     constructor(params: BlockbenchAnimationProviderProps) {
         super();
 
+        this.keyframes_list = {};
         this.config_params = params;
         this.bones = {
             head: {},
@@ -52,7 +56,7 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
             params.animationName ?? Object.keys(params.animation.animations).at(0);
 
         if (!animation_name)
-            throw Error('Animation name not specified and no animation found');
+            throw Error('Animation name not specified or no animation found');
 
         this.animation = this.config_params.animation.animations[animation_name];
 
@@ -62,13 +66,9 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
                 normalizedBoneName = defaultBonesOverrides[bone];
             }
 
-            if (
-                this.config_params.bonesOverrides &&
-                Object.values(this.config_params.bonesOverrides).includes(bone)
-            ) {
-                normalizedBoneName = Object.entries(
-                    this.config_params.bonesOverrides
-                )
+            const overrides = this.config_params.bonesOverrides;
+            if (overrides && Object.values(overrides).includes(bone)) {
+                normalizedBoneName = Object.entries(overrides)
                     .find(([, v]) => v === bone)
                     ?.at(0);
             }
@@ -79,26 +79,39 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
                 position: this.convertKeyframe(value.position),
                 rotation: this.convertKeyframe(value.rotation)
             };
+
+            const rotation_keys = Object.keys(value.rotation ?? {});
+            const position_keys = Object.keys(value.position ?? {});
+            this.keyframes_list[normalizedBoneName] = {
+                rotation: { str: rotation_keys, num: rotation_keys.map(parseFloat) },
+                position: {
+                    str: position_keys,
+                    num: position_keys.map(parseFloat)
+                }
+            };
         }
+    }
+
+    private clamp(val: number, min: number, max: number): number {
+        return Math.max(min, Math.min(val, max));
     }
 
     private getCurrentKeyframe(
         value: Record<string, ExtendedKeyframe>,
-        keyframes_list_str: string[],
+        keyframes_list: SingleKeyframeListItem,
         insertion: number,
         looped_time: number
     ) {
-        const keyframes_list = keyframes_list_str.map(parseFloat);
-        const next_insertion = (insertion + 1) % keyframes_list.length;
+        const next_insertion = (insertion + 1) % keyframes_list!.num.length;
 
-        const keyframe_start = keyframes_list[insertion];
-        const keyframe_end = keyframes_list[next_insertion];
+        const keyframe_start = keyframes_list!.num[insertion];
+        const keyframe_end = keyframes_list!.num[next_insertion];
 
         const keyframe_progress =
             (looped_time - keyframe_start) / Math.abs(keyframe_end - keyframe_start);
 
-        const prev_target = value[keyframes_list_str[insertion]];
-        const target = value[keyframes_list_str[next_insertion]];
+        const prev_target = value[keyframes_list!.str[insertion]];
+        const target = value[keyframes_list!.str[next_insertion]];
 
         let progress = keyframe_progress;
         if (target.lerp_mode === 'catmullrom') {
@@ -113,25 +126,30 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
     }
 
     protected animate(player: PlayerObject): void {
-        const looped_time = this.progress % this.animation.animation_length;
+        const looped =
+            this.config_params.forceLoop !== undefined
+                ? this.config_params.forceLoop
+                : this.animation.loop;
+
+        const looped_time = looped
+            ? this.progress % this.animation.animation_length
+            : this.clamp(this.progress, 0, this.animation.animation_length);
 
         for (const [bone, value] of Object.entries(this.bones)) {
             if (value.rotation) {
-                const rot = value.rotation;
-                const keyframes_list_str = Object.keys(rot);
-                const keyframes_list = keyframes_list_str.map(parseFloat);
+                const keyframes_list = this.keyframes_list[bone].rotation;
 
                 let insertion_rotation = this.findInsertPosition(
-                    keyframes_list,
+                    keyframes_list!.num,
                     looped_time
                 );
 
                 if (insertion_rotation === null)
-                    insertion_rotation = keyframes_list.length - 1;
+                    insertion_rotation = keyframes_list!.num.length - 1;
 
                 const curr = this.getCurrentKeyframe(
                     value.rotation,
-                    keyframes_list_str,
+                    keyframes_list!,
                     insertion_rotation,
                     looped_time
                 ).map(MathUtils.degToRad);
@@ -142,21 +160,19 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
             }
 
             if (value.position) {
-                const rot = value.position;
-                const keyframes_list_str = Object.keys(rot);
-                const keyframes_list = keyframes_list_str.map(parseFloat);
+                const keyframes_list = this.keyframes_list[bone].position;
 
                 let insertion_rotation = this.findInsertPosition(
-                    keyframes_list,
+                    keyframes_list!.num,
                     looped_time
                 );
 
                 if (insertion_rotation === null)
-                    insertion_rotation = keyframes_list.length - 1;
+                    insertion_rotation = keyframes_list!.num.length - 1;
 
                 const curr = this.getCurrentKeyframe(
                     value.position,
-                    keyframes_list_str,
+                    keyframes_list!,
                     insertion_rotation,
                     looped_time
                 );
@@ -174,8 +190,25 @@ export class BlockbenchAnimationProvider extends PlayerAnimation {
     }
 
     private findInsertPosition(arr: number[], target: number): number | null {
-        for (let i = 0; i < arr.length - 1; i++) {
-            if (arr[i] <= target && arr[i + 1] >= target) return i;
+        let left = 0;
+        let right = arr.length - 1;
+
+        if (target <= arr[0] || target >= arr[arr.length - 1]) {
+            return null;
+        }
+
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+
+            if (arr[mid] < target && target < arr[mid + 1]) {
+                return mid;
+            }
+
+            if (target < arr[mid]) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
         }
 
         return null;

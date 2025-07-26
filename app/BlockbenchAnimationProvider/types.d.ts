@@ -15,6 +15,9 @@ export interface BlockbenchAnimationProviderProps {
      * If not specified using LeftLeg, Head, etc.
      */
     bonesOverrides?: BonesOverrides;
+
+    /** Override animation loop state */
+    forceLoop?: boolean;
 }
 
 /** Overrides for bones names */
@@ -35,7 +38,7 @@ export interface AnimationFileType {
 
 /** Type of single animation */
 export interface AnimationsObject {
-    loop: boolean;
+    loop?: boolean | string;
     animation_length: number;
     bones: { [bone: string]: BonesAnimation<KeyframeValue> };
 }
@@ -46,6 +49,16 @@ export type KeyframeValue = number[] | ExtendedKeyframe;
 export interface BonesAnimation<V = ExtendedKeyframe> {
     rotation?: Record<string, V>;
     position?: Record<string, V>;
+}
+
+export type SingleKeyframeListItem = {
+    str: string[];
+    num: number[];
+};
+
+export interface KeyframesList {
+    rotation?: SingleKeyframeListItem;
+    position?: SingleKeyframeListItem;
 }
 
 export interface ExtendedKeyframe {
