@@ -1,26 +1,38 @@
 {
-  "name": "skinview3d-blockbench-animation",
-  "version": "0.1.0",
-  "private": true,
+  "name": "skinview3d-blockbench",
+  "version": "1.0.0",
+  "description": "SkinView3d animation provider for blockbench bedrock minecraft animations",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "tsc"
   },
+  "files": [
+    "dist/"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Andcool-Systems/skinview3d-blockbench-animation.git"
+  },
+  "keywords": [
+    "animation",
+    "3d",
+    "skinview3d"
+  ],
+  "author": "AndcoolSystems",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Andcool-Systems/skinview3d-blockbench-animation/issues"
+  },
+  "homepage": "https://github.com/Andcool-Systems/skinview3d-blockbench-animation#readme",
   "dependencies": {
-    "next": "15.4.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "skinview3d": "^3.4.1"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.4",
-    "typescript": "^5"
+    "skinview3d": "^3.4.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,0 +1,6 @@
+src/
+readme/
+tsconfig.json
+.vscode/
+node_modules/
+.prettierrc
