@@ -18,6 +18,9 @@ export interface BlockbenchAnimationProviderProps {
 
     /** Override animation loop state */
     forceLoop?: boolean;
+
+    /** Animate cape position with body */
+    connectCape?: boolean
 }
 
 /** Overrides for bones names */

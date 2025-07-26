@@ -11,7 +11,7 @@ import {
     SingleKeyframeListItem
 } from './types';
 
-import { Euler, MathUtils } from 'three';
+import { Euler, MathUtils, Vector3 } from 'three';
 import { easeInOutQuad } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
@@ -185,6 +185,13 @@ export class SkinViewBlockbench extends PlayerAnimation {
                     defaults[1] + curr[1];
                 player.skin[bone as NormalizedBonesNames].position.z =
                     defaults[2] + -curr[2];
+
+                if (bone === 'body' && this.config_params.connectCape) {
+                    const cape_defaults = defaultPositions['cape'];
+                    player.cape.position.x = cape_defaults[0] + curr[0];
+                    player.cape.position.y = cape_defaults[1] + curr[1];
+                    player.cape.position.z = cape_defaults[2] + -curr[2];
+                }
             }
         }
     }
