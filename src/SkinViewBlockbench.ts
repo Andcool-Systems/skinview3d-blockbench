@@ -81,9 +81,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 rotation: this.convertKeyframe(value.rotation)
             };
 
-            const filter_f = (i: string) => i !== this.animation_length.toString();
-            const rotation_keys = Object.keys(value.rotation ?? {}).filter(filter_f);
-            const position_keys = Object.keys(value.position ?? {}).filter(filter_f);
+            const rotation_keys = Object.keys(value.rotation ?? {});
+            const position_keys = Object.keys(value.position ?? {});
             this.keyframes_list[normalizedBoneName] = {
                 rotation: { str: rotation_keys, num: rotation_keys.map(parseFloat) },
                 position: {
