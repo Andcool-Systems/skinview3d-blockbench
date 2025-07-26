@@ -3,7 +3,6 @@ import {
     AnimationsObject,
     BlockbenchAnimationProviderProps,
     BonesAnimation,
-    BonesOverrides,
     ExtendedKeyframe,
     KeyframesList,
     KeyframeValue,
@@ -11,7 +10,7 @@ import {
     SingleKeyframeListItem
 } from './types';
 
-import { Euler, MathUtils, Vector3 } from 'three';
+import { Euler, MathUtils } from 'three';
 import { easeInOutQuad } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
@@ -61,7 +60,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.animation = this.config_params.animation.animations[animation_name];
 
         for (const [bone, value] of Object.entries(this.animation.bones)) {
-            let normalizedBoneName = undefined;
+            let normalizedBoneName: NormalizedBonesNames | undefined = undefined;
             if (bone in defaultBonesOverrides) {
                 normalizedBoneName = defaultBonesOverrides[bone];
             }
@@ -75,7 +74,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
             if (!normalizedBoneName) throw Error(`Found unknown bone: ${bone}`);
 
-            this.bones[normalizedBoneName as keyof BonesOverrides] = {
+            this.bones[normalizedBoneName] = {
                 position: this.convertKeyframe(value.position),
                 rotation: this.convertKeyframe(value.rotation)
             };
