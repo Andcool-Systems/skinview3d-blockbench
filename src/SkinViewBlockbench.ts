@@ -20,6 +20,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
     animation: AnimationsObject;
     bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
     keyframes_list: Record<string, KeyframesList>;
+    animation_length: number;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -58,6 +59,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
             throw Error('Animation name not specified or no animation found');
 
         this.animation = this.config_params.animation.animations[animation_name];
+        this.animation_length = this.animation.animation_length;
 
         for (const [bone, value] of Object.entries(this.animation.bones)) {
             let normalizedBoneName: NormalizedBonesNames | undefined = undefined;
@@ -79,8 +81,9 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 rotation: this.convertKeyframe(value.rotation)
             };
 
-            const rotation_keys = Object.keys(value.rotation ?? {});
-            const position_keys = Object.keys(value.position ?? {});
+            const filter_f = (i: string) => i !== this.animation_length.toString();
+            const rotation_keys = Object.keys(value.rotation ?? {}).filter(filter_f);
+            const position_keys = Object.keys(value.position ?? {}).filter(filter_f);
             this.keyframes_list[normalizedBoneName] = {
                 rotation: { str: rotation_keys, num: rotation_keys.map(parseFloat) },
                 position: {

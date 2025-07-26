@@ -1,6 +1,6 @@
 {
   "name": "skinview3d-blockbench",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "SkinView3d animation provider for blockbench bedrock minecraft animations",
   "main": "dist/index.js",
   "module": "dist/index.js",
