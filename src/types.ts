@@ -1,3 +1,5 @@
+import { SkinViewBlockbench } from './SkinViewBlockbench';
+
 export interface BlockbenchAnimationProviderProps {
     /** Animation object/json */
     animation: AnimationFileType;
@@ -22,11 +24,11 @@ export interface BlockbenchAnimationProviderProps {
     /** Animate cape position with body */
     connectCape?: boolean;
 
-    /** Function for animation finishing */
-    onFinish?: () => unknown;
+    /** Callback for animation finishing */
+    onFinish?: (animation?: SkinViewBlockbench) => unknown;
 
-    /** Function for animation loop */
-    onLoopEnd?: () => unknown;
+    /** Callback for animation loop finished */
+    onLoopEnd?: (animation?: SkinViewBlockbench) => unknown;
 }
 
 /** Overrides for bones names */

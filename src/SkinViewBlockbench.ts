@@ -17,12 +17,15 @@ import { defaultBonesOverrides, defaultPositions } from './defaults';
 /** Provider for bedrock .animation.json files */
 export class SkinViewBlockbench extends PlayerAnimation {
     private config_params: BlockbenchAnimationProviderProps;
-    private animation: AnimationsObject;
-    private bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
-    private keyframes_list: Record<string, KeyframesList>;
-    animation_length: number;
-    private last_looped_time: number;
-    private animation_finished_fired: boolean;
+    animation!: AnimationsObject;
+    private bones!: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
+    private keyframes_list!: Record<string, KeyframesList>;
+    animation_length!: number;
+    animation_name!: string;
+    private last_looped_time!: number;
+    private animation_finished_fired!: boolean;
+    private firstLoop!: boolean;
+    private player!: PlayerObject;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -42,11 +45,23 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
     constructor(params: BlockbenchAnimationProviderProps) {
         super();
-
-        this.keyframes_list = {};
         this.config_params = params;
+
+        const animation_name =
+            params.animationName ?? Object.keys(params.animation.animations).at(0);
+
+        if (!animation_name)
+            throw Error('Animation name not specified or no animation found');
+
+        this.init(animation_name);
+    }
+
+    private init(animation_name: string) {
+        this.keyframes_list = {};
         this.last_looped_time = 0;
         this.animation_finished_fired = false;
+        this.firstLoop = true;
+        this.progress = 0;
         this.bones = {
             head: {},
             body: {},
@@ -56,13 +71,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
             rightLeg: {}
         };
 
-        const animation_name =
-            params.animationName ?? Object.keys(params.animation.animations).at(0);
-
-        if (!animation_name)
-            throw Error('Animation name not specified or no animation found');
-
         this.animation = this.config_params.animation.animations[animation_name];
+        this.animation_name = animation_name;
         this.animation_length = this.animation.animation_length;
 
         for (const [bone, value] of Object.entries(this.animation.bones)) {
@@ -95,6 +105,26 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 }
             };
         }
+
+        if (this.player) this.player.resetJoints();
+    }
+
+    setAnimation(
+        props: Omit<
+            BlockbenchAnimationProviderProps,
+            'animation' | 'bonesOverrides' | 'onFinish' | 'onLoopEnd'
+        >
+    ) {
+        const animation_name =
+            props.animationName ??
+            Object.keys(this.config_params.animation.animations).at(0);
+
+        if (!animation_name)
+            throw Error('Animation name not specified or no animation found');
+
+        this.init(animation_name);
+        this.config_params.connectCape = props.connectCape;
+        this.config_params.forceLoop = props.forceLoop;
     }
 
     private clamp(val: number, min: number, max: number): number {
@@ -134,6 +164,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
     }
 
     protected animate(player: PlayerObject): void {
+        this.player = player; // Save player object for future
+
         const looped =
             this.config_params.forceLoop !== undefined
                 ? this.config_params.forceLoop
@@ -144,7 +176,11 @@ export class SkinViewBlockbench extends PlayerAnimation {
             : this.clamp(this.progress, 0, this.animation.animation_length);
 
         if (looped_time < this.last_looped_time && looped) {
-            this.config_params.onLoopEnd?.();
+            if (!this.firstLoop) {
+                this.config_params.onLoopEnd?.(this);
+            } else {
+                this.firstLoop = false;
+            }
         }
 
         if (
@@ -152,7 +188,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
             !looped &&
             !this.animation_finished_fired
         ) {
-            this.config_params.onFinish?.();
+            this.config_params.onFinish?.(this);
             this.animation_finished_fired = true;
         }
 
