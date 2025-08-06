@@ -11,7 +11,7 @@ import {
 } from './types';
 
 import { Euler, MathUtils } from 'three';
-import { easeInOutQuad } from './lerp';
+import { catmullRom } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
 /** Provider for bedrock .animation.json files */
@@ -103,27 +103,30 @@ export class SkinViewBlockbench extends PlayerAnimation {
         insertion: number,
         looped_time: number
     ) {
-        const next_insertion = (insertion + 1) % keyframes_list!.num.length;
+        const times = keyframes_list.num;
+        const labels = keyframes_list.str;
 
-        const keyframe_start = keyframes_list!.num[insertion];
-        const keyframe_end = keyframes_list!.num[next_insertion];
+        const i0 = (insertion - 1 + times.length) % times.length;
+        const i1 = insertion;
+        const i2 = (insertion + 1) % times.length;
+        const i3 = (insertion + 2) % times.length;
 
-        const keyframe_progress =
-            (looped_time - keyframe_start) / Math.abs(keyframe_end - keyframe_start);
+        const t1 = times[i1];
+        const t2 = times[i2];
 
-        const prev_target = value[keyframes_list!.str[insertion]];
-        const target = value[keyframes_list!.str[next_insertion]];
+        const p0 = value[labels[i0]].post!;
+        const p1 = value[labels[i1]].post!;
+        const p2 = value[labels[i2]].post!;
+        const p3 = value[labels[i3]].post!;
 
-        let progress = keyframe_progress;
+        const t = (looped_time - t1) / (t2 - t1);
+        const target = value[labels[i2]];
+
         if (target.lerp_mode === 'catmullrom') {
-            progress = easeInOutQuad(keyframe_progress);
+            return [0, 1, 2].map(i => catmullRom(p0[i], p1[i], p2[i], p3[i], t));
+        } else {
+            return [0, 1, 2].map(i => p1[i] + (p2[i] - p1[i]) * t);
         }
-
-        return Array.from({ length: 3 }, (_, i) => {
-            const prev_t = prev_target.post![i];
-            const target_t = target.post![i];
-            return prev_t + (target_t - prev_t) * progress;
-        });
     }
 
     protected animate(player: PlayerObject): void {
