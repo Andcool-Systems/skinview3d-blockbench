@@ -16,11 +16,13 @@ import { defaultBonesOverrides, defaultPositions } from './defaults';
 
 /** Provider for bedrock .animation.json files */
 export class SkinViewBlockbench extends PlayerAnimation {
-    config_params: BlockbenchAnimationProviderProps;
-    animation: AnimationsObject;
-    bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
-    keyframes_list: Record<string, KeyframesList>;
+    private config_params: BlockbenchAnimationProviderProps;
+    private animation: AnimationsObject;
+    private bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
+    private keyframes_list: Record<string, KeyframesList>;
     animation_length: number;
+    private last_looped_time: number;
+    private animation_finished_fired: boolean;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -43,6 +45,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
         this.keyframes_list = {};
         this.config_params = params;
+        this.last_looped_time = 0;
+        this.animation_finished_fired = false;
         this.bones = {
             head: {},
             body: {},
@@ -138,6 +142,21 @@ export class SkinViewBlockbench extends PlayerAnimation {
         const looped_time = looped
             ? this.progress % this.animation.animation_length
             : this.clamp(this.progress, 0, this.animation.animation_length);
+
+        if (looped_time < this.last_looped_time && looped) {
+            this.config_params.onLoopEnd?.();
+        }
+
+        if (
+            this.progress >= this.animation.animation_length &&
+            !looped &&
+            !this.animation_finished_fired
+        ) {
+            this.config_params.onFinish?.();
+            this.animation_finished_fired = true;
+        }
+
+        this.last_looped_time = looped_time;
 
         for (const [bone, value] of Object.entries(this.bones)) {
             if (value.rotation) {

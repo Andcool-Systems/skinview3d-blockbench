@@ -20,7 +20,13 @@ export interface BlockbenchAnimationProviderProps {
     forceLoop?: boolean;
 
     /** Animate cape position with body */
-    connectCape?: boolean
+    connectCape?: boolean;
+
+    /** Function for animation finishing */
+    onFinish?: () => unknown;
+
+    /** Function for animation loop */
+    onLoopEnd?: () => unknown;
 }
 
 /** Overrides for bones names */
