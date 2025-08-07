@@ -3,7 +3,9 @@ import {
     AnimationsObject,
     BlockbenchAnimationProviderProps,
     BonesAnimation,
+    BonesOverrides,
     ExtendedKeyframe,
+    InternalAnimationObject,
     KeyframesList,
     KeyframeValue,
     NormalizedBonesNames,
@@ -16,20 +18,20 @@ import { defaultBonesOverrides, defaultPositions } from './defaults';
 
 /** Provider for bedrock .animation.json files */
 export class SkinViewBlockbench extends PlayerAnimation {
-    private config_params: BlockbenchAnimationProviderProps;
-    animation!: AnimationsObject;
-    private bones!: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
-    private keyframes_list!: Record<string, KeyframesList>;
-    animation_length!: number;
-    animation_name!: string;
+    private animations: Record<string, InternalAnimationObject>;
+
     onLoopEnd: BlockbenchAnimationProviderProps['onLoopEnd'];
     onFinish: BlockbenchAnimationProviderProps['onFinish'];
+    force_loop?: boolean;
+    connect_cape?: boolean;
+
+    current_animation_name: string = '';
+    animation_iteration: number = 0;
 
     private player!: PlayerObject;
-    animation_iteration!: number;
 
-    private _progress!: number;
-    private clock!: Clock;
+    private _progress: number = 0;
+    private clock: Clock;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -49,9 +51,12 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
     constructor(params: BlockbenchAnimationProviderProps) {
         super();
-        this.config_params = params;
+
+        this.animations = {};
         this.onFinish = params.onFinish;
         this.onLoopEnd = params.onLoopEnd;
+        this.force_loop = params.forceLoop;
+        this.connect_cape = params.connectCape;
         this.clock = new Clock();
 
         const animation_name =
@@ -60,52 +65,69 @@ export class SkinViewBlockbench extends PlayerAnimation {
         if (!animation_name)
             throw Error('Animation name not specified or no animation found');
 
-        this.init(animation_name);
+        // Initialize all animations
+        for (const animation_name of Object.keys(params.animation.animations)) {
+            this.processAnimation(
+                params.animation.animations,
+                animation_name,
+                params.bonesOverrides
+            );
+        }
+
+        this.restart(animation_name);
     }
 
-    private init(animation_name: string) {
+    private restart(animation_name: string) {
         this.clock.stop();
         this.clock.autoStart = true;
 
-        this.keyframes_list = {};
         this._progress = 0;
         this.animation_iteration = 0;
-        this.bones = {
-            head: {},
-            body: {},
-            leftArm: {},
-            rightArm: {},
-            leftLeg: {},
-            rightLeg: {}
-        };
 
-        this.animation = this.config_params.animation.animations[animation_name];
-        this.animation_name = animation_name;
-        this.animation_length = this.animation.animation_length;
+        this.current_animation_name = animation_name;
 
-        for (const [bone, value] of Object.entries(this.animation.bones)) {
+        if (this.player) this.player.resetJoints();
+        this.paused = false;
+    }
+
+    private processAnimation(
+        animations: {
+            [anim_name: string]: AnimationsObject;
+        },
+        animation_name: string,
+        bones_overrides?: BonesOverrides
+    ) {
+        const animation = animations[animation_name];
+        const bones: Record<string, BonesAnimation<ExtendedKeyframe>> = {};
+        const keyframes_list: Record<string, KeyframesList> = {};
+
+        // Iterate by each bone animation
+        for (const [bone, value] of Object.entries(animation.bones)) {
+            // Normalizing bones names
             let normalizedBoneName: NormalizedBonesNames | undefined = undefined;
             if (bone in defaultBonesOverrides) {
                 normalizedBoneName = defaultBonesOverrides[bone];
             }
 
-            const overrides = this.config_params.bonesOverrides;
-            if (overrides && Object.values(overrides).includes(bone)) {
-                normalizedBoneName = Object.entries(overrides)
+            // Apply overrides
+            if (bones_overrides && Object.values(bones_overrides).includes(bone)) {
+                normalizedBoneName = Object.entries(bones_overrides)
                     .find(([, v]) => v === bone)
                     ?.at(0);
             }
 
             if (!normalizedBoneName) throw Error(`Found unknown bone: ${bone}`);
 
-            this.bones[normalizedBoneName] = {
+            // Normalize keyframes objects
+            bones[normalizedBoneName] = {
                 position: this.convertKeyframe(value.position),
                 rotation: this.convertKeyframe(value.rotation)
             };
 
+            // Prepare keyframes for proper use
             const rotation_keys = Object.keys(value.rotation ?? {});
             const position_keys = Object.keys(value.position ?? {});
-            this.keyframes_list[normalizedBoneName] = {
+            keyframes_list[normalizedBoneName] = {
                 rotation: { str: rotation_keys, num: rotation_keys.map(parseFloat) },
                 position: {
                     str: position_keys,
@@ -114,26 +136,31 @@ export class SkinViewBlockbench extends PlayerAnimation {
             };
         }
 
-        if (this.player) this.player.resetJoints();
-        this.paused = false;
+        this.animations[animation_name] = {
+            bones,
+            keyframes_list,
+            animation_length: animation.animation_length,
+            animation_name,
+            animation_loop: animation.loop == true
+        };
     }
 
+    /** Sets the current animation by name from already imported animation set */
     setAnimation(
-        props: Omit<
+        params: Omit<
             BlockbenchAnimationProviderProps,
             'animation' | 'bonesOverrides' | 'onFinish' | 'onLoopEnd'
         >
     ) {
         const animation_name =
-            props.animationName ??
-            Object.keys(this.config_params.animation.animations).at(0);
+            params.animationName ?? Object.keys(this.animations).at(0);
 
         if (!animation_name)
             throw Error('Animation name not specified or no animation found');
 
-        this.init(animation_name);
-        this.config_params.connectCape = props.connectCape;
-        this.config_params.forceLoop = props.forceLoop;
+        this.restart(animation_name);
+        this.force_loop = params.forceLoop;
+        this.connect_cape = params.connectCape;
     }
 
     private clamp(val: number, min: number, max: number): number {
@@ -176,18 +203,21 @@ export class SkinViewBlockbench extends PlayerAnimation {
         const delta = this.clock.getDelta();
         this.player = player; // Save player object for future
 
+        const current_animation = this.animations[this.current_animation_name];
+
         const looped =
-            this.config_params.forceLoop !== undefined
-                ? this.config_params.forceLoop
-                : this.animation.loop;
+            this.force_loop !== undefined
+                ? this.force_loop
+                : current_animation.animation_loop;
 
         const looped_time = looped
-            ? this._progress % this.animation.animation_length
-            : this.clamp(this._progress, 0, this.animation.animation_length);
+            ? this._progress % current_animation.animation_length
+            : this.clamp(this._progress, 0, current_animation.animation_length);
 
-        for (const [bone, value] of Object.entries(this.bones)) {
+        for (const [bone, value] of Object.entries(current_animation.bones)) {
             if (value.rotation) {
-                const keyframes_list = this.keyframes_list[bone].rotation;
+                const keyframes_list =
+                    current_animation.keyframes_list[bone].rotation;
 
                 let insertion_rotation = this.findInsertPosition(
                     keyframes_list!.num,
@@ -210,7 +240,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
             }
 
             if (value.position) {
-                const keyframes_list = this.keyframes_list[bone].position;
+                const keyframes_list =
+                    current_animation.keyframes_list[bone].position;
 
                 let insertion_rotation = this.findInsertPosition(
                     keyframes_list!.num,
@@ -236,7 +267,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 player.skin[bone as NormalizedBonesNames].position.z =
                     defaults[2] + -curr[2];
 
-                if (bone === 'body' && this.config_params.connectCape) {
+                if (bone === 'body' && this.connect_cape) {
                     const cape_defaults = defaultPositions['cape'];
                     player.cape.position.x = cape_defaults[0] + curr[0];
                     player.cape.position.y = cape_defaults[1] + curr[1];
@@ -249,14 +280,14 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this._progress += delta;
 
         const animation_iteration = Math.floor(
-            old_progress / this.animation.animation_length
+            old_progress / current_animation.animation_length
         );
         if (animation_iteration > this.animation_iteration && looped) {
             this.animation_iteration = animation_iteration;
             this.onLoopEnd?.(this);
         }
 
-        if (old_progress >= this.animation.animation_length && !looped) {
+        if (old_progress >= current_animation.animation_length && !looped) {
             this.paused = true;
             this.onFinish?.(this);
         }

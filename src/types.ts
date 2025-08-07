@@ -67,11 +67,6 @@ export type SingleKeyframeListItem = {
     num: number[];
 };
 
-export interface KeyframesList {
-    rotation?: SingleKeyframeListItem;
-    position?: SingleKeyframeListItem;
-}
-
 export interface ExtendedKeyframe {
     pre?: number[];
     post?: number[];
@@ -85,3 +80,16 @@ export type NormalizedBonesNames =
     | 'rightArm'
     | 'leftLeg'
     | 'rightLeg';
+
+export interface KeyframesList {
+    rotation?: SingleKeyframeListItem;
+    position?: SingleKeyframeListItem;
+}
+
+export type InternalAnimationObject = {
+    bones: Record<NormalizedBonesNames, BonesAnimation<ExtendedKeyframe>>;
+    keyframes_list: Record<string, KeyframesList>;
+    animation_length: number;
+    animation_name: string;
+    animation_loop: boolean;
+};
