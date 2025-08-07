@@ -20,19 +20,35 @@ import { defaultBonesOverrides, defaultPositions } from './defaults';
 export class SkinViewBlockbench extends PlayerAnimation {
     private animations: Record<string, InternalAnimationObject>;
 
+    /** Function called when looped animation loop ends */
     onLoopEnd: BlockbenchAnimationProviderProps['onLoopEnd'];
-    onFinish: BlockbenchAnimationProviderProps['onFinish'];
-    force_loop?: boolean;
-    connect_cape?: boolean;
 
+    /** Function call when single-iteration animation ends */
+    onFinish: BlockbenchAnimationProviderProps['onFinish'];
+
+    /**
+     * Force loop animation, ignoring its settings
+     * (undefined for using loop setting from animation)
+     */
+    force_loop?: boolean;
+
+    /** Connect cape to body if its not animated */
+    connect_cape: boolean;
+
+    /** Currently playing animation name */
     current_animation_name: string = '';
+
+    /** Currently playing animation iteration */
     animation_iteration: number = 0;
 
+    /** Player object */
     private player!: PlayerObject;
 
+    /** Animation progress in milliseconds */
     private _progress: number = 0;
     private clock: Clock;
 
+    /** Normalize keyframe name by adding explicit lerp mode */
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
     ): Record<string, ExtendedKeyframe> | undefined {
@@ -56,7 +72,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.onFinish = params.onFinish;
         this.onLoopEnd = params.onLoopEnd;
         this.force_loop = params.forceLoop;
-        this.connect_cape = params.connectCape;
+        this.connect_cape = params.connectCape ?? false;
         this.clock = new Clock();
 
         const animation_name =
@@ -74,6 +90,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
             );
         }
 
+        // Reset animation
         this.restart(animation_name);
     }
 
@@ -90,6 +107,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.paused = false;
     }
 
+    /** Prepare single animation */
     private processAnimation(
         animations: {
             [anim_name: string]: AnimationsObject;
@@ -160,7 +178,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
         this.restart(animation_name);
         this.force_loop = params.forceLoop;
-        this.connect_cape = params.connectCape;
+        this.connect_cape = params.connectCape ?? false;
     }
 
     private clamp(val: number, min: number, max: number): number {
