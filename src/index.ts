@@ -1,1 +1,2 @@
-export { SkinViewBlockbench } from "./SkinViewBlockbench";
+export * from './SkinViewBlockbench';
+export * from './types';

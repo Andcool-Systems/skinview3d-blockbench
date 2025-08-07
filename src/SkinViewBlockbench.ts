@@ -10,7 +10,7 @@ import {
     SingleKeyframeListItem
 } from './types';
 
-import { Euler, MathUtils } from 'three';
+import { Clock, Euler, MathUtils } from 'three';
 import { catmullRom } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
@@ -22,10 +22,14 @@ export class SkinViewBlockbench extends PlayerAnimation {
     private keyframes_list!: Record<string, KeyframesList>;
     animation_length!: number;
     animation_name!: string;
-    private last_looped_time!: number;
-    private animation_finished_fired!: boolean;
-    private firstLoop!: boolean;
+    onLoopEnd: BlockbenchAnimationProviderProps['onLoopEnd'];
+    onFinish: BlockbenchAnimationProviderProps['onFinish'];
+
     private player!: PlayerObject;
+    animation_iteration!: number;
+
+    private _progress!: number;
+    private clock!: Clock;
 
     private convertKeyframe(
         input?: Record<string, KeyframeValue>
@@ -46,6 +50,9 @@ export class SkinViewBlockbench extends PlayerAnimation {
     constructor(params: BlockbenchAnimationProviderProps) {
         super();
         this.config_params = params;
+        this.onFinish = params.onFinish;
+        this.onLoopEnd = params.onLoopEnd;
+        this.clock = new Clock();
 
         const animation_name =
             params.animationName ?? Object.keys(params.animation.animations).at(0);
@@ -57,11 +64,12 @@ export class SkinViewBlockbench extends PlayerAnimation {
     }
 
     private init(animation_name: string) {
+        this.clock.stop();
+        this.clock.autoStart = true;
+
         this.keyframes_list = {};
-        this.last_looped_time = 0;
-        this.animation_finished_fired = false;
-        this.firstLoop = true;
-        this.progress = 0;
+        this._progress = 0;
+        this.animation_iteration = 0;
         this.bones = {
             head: {},
             body: {},
@@ -107,6 +115,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
         }
 
         if (this.player) this.player.resetJoints();
+        this.paused = false;
     }
 
     setAnimation(
@@ -164,6 +173,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
     }
 
     protected animate(player: PlayerObject): void {
+        const delta = this.clock.getDelta();
         this.player = player; // Save player object for future
 
         const looped =
@@ -172,27 +182,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 : this.animation.loop;
 
         const looped_time = looped
-            ? this.progress % this.animation.animation_length
-            : this.clamp(this.progress, 0, this.animation.animation_length);
-
-        if (looped_time < this.last_looped_time && looped) {
-            if (!this.firstLoop) {
-                this.config_params.onLoopEnd?.(this);
-            } else {
-                this.firstLoop = false;
-            }
-        }
-
-        if (
-            this.progress >= this.animation.animation_length &&
-            !looped &&
-            !this.animation_finished_fired
-        ) {
-            this.config_params.onFinish?.(this);
-            this.animation_finished_fired = true;
-        }
-
-        this.last_looped_time = looped_time;
+            ? this._progress % this.animation.animation_length
+            : this.clamp(this._progress, 0, this.animation.animation_length);
 
         for (const [bone, value] of Object.entries(this.bones)) {
             if (value.rotation) {
@@ -252,6 +243,22 @@ export class SkinViewBlockbench extends PlayerAnimation {
                     player.cape.position.z = cape_defaults[2] + -curr[2];
                 }
             }
+        }
+
+        const old_progress = this._progress;
+        this._progress += delta;
+
+        const animation_iteration = Math.floor(
+            old_progress / this.animation.animation_length
+        );
+        if (animation_iteration > this.animation_iteration && looped) {
+            this.animation_iteration = animation_iteration;
+            this.onLoopEnd?.(this);
+        }
+
+        if (old_progress >= this.animation.animation_length && !looped) {
+            this.paused = true;
+            this.onFinish?.(this);
         }
     }
 
