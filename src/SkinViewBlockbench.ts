@@ -75,12 +75,6 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.connect_cape = params.connectCape ?? false;
         this.clock = new Clock();
 
-        const animation_name =
-            params.animationName ?? Object.keys(params.animation.animations).at(0);
-
-        if (!animation_name)
-            throw Error('Animation name not specified or no animation found');
-
         // Initialize all animations
         for (const animation_name of Object.keys(params.animation.animations)) {
             this.processAnimation(
@@ -91,17 +85,22 @@ export class SkinViewBlockbench extends PlayerAnimation {
         }
 
         // Reset animation
-        this.restart(animation_name);
+        this.restart(params.animationName);
     }
 
-    private restart(animation_name: string) {
+    private restart(animation_name?: string) {
+        const _animation_name = animation_name ?? Object.keys(this.animations).at(0);
+
+        if (!_animation_name || !(_animation_name in this.animations))
+            throw new Error('Animation name not specified or no animation found');
+
         this.clock.stop();
         this.clock.autoStart = true;
 
         this._progress = 0;
         this.animation_iteration = 0;
 
-        this.current_animation_name = animation_name;
+        this.current_animation_name = _animation_name;
 
         if (this.player) this.player.resetJoints();
         this.paused = false;
@@ -170,13 +169,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
             'animation' | 'bonesOverrides' | 'onFinish' | 'onLoopEnd'
         >
     ) {
-        const animation_name =
-            params.animationName ?? Object.keys(this.animations).at(0);
-
-        if (!animation_name)
-            throw Error('Animation name not specified or no animation found');
-
-        this.restart(animation_name);
+        this.restart(params.animationName);
         this.force_loop = params.forceLoop;
         this.connect_cape = params.connectCape ?? false;
     }
