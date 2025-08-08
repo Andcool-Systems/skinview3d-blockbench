@@ -30,16 +30,16 @@ export class SkinViewBlockbench extends PlayerAnimation {
      * Force loop animation, ignoring its settings
      * (undefined for using loop setting from animation)
      */
-    force_loop?: boolean;
+    forceLoop?: boolean;
 
     /** Connect cape to body if its not animated */
-    connect_cape: boolean;
+    connectCape: boolean;
 
     /** Currently playing animation name */
-    current_animation_name: string = '';
+    animationName: string = '';
 
     /** Currently playing animation iteration */
-    animation_iteration: number = 0;
+    animationIteration: number = 0;
 
     /** Player object */
     private player!: PlayerObject;
@@ -48,10 +48,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
     private _progress: number = 0;
     private clock: Clock;
 
-    /** Normalize keyframe name by adding explicit lerp mode */
-    private convertKeyframe(
-        input?: Record<string, KeyframeValue>
-    ): Record<string, ExtendedKeyframe> | undefined {
+    /** Normalize keyframes names by adding explicit lerp mode */
+    private convertKeyframe(input?: Record<string, KeyframeValue>) {
         if (!input) return undefined;
 
         const result: Record<string, ExtendedKeyframe> = {};
@@ -71,8 +69,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.animations = {};
         this.onFinish = params.onFinish;
         this.onLoopEnd = params.onLoopEnd;
-        this.force_loop = params.forceLoop;
-        this.connect_cape = params.connectCape ?? false;
+        this.forceLoop = params.forceLoop;
+        this.connectCape = params.connectCape ?? false;
         this.clock = new Clock();
 
         // Initialize all animations
@@ -85,10 +83,11 @@ export class SkinViewBlockbench extends PlayerAnimation {
         }
 
         // Reset animation
-        this.restart(params.animationName);
+        this.reset(params.animationName);
     }
 
-    private restart(animation_name?: string) {
+    /** Reset animation */
+    private reset(animation_name?: string) {
         const _animation_name = animation_name ?? Object.keys(this.animations).at(0);
 
         if (!_animation_name || !(_animation_name in this.animations))
@@ -98,9 +97,9 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.clock.autoStart = true;
 
         this._progress = 0;
-        this.animation_iteration = 0;
+        this.animationIteration = 0;
 
-        this.current_animation_name = _animation_name;
+        this.animationName = _animation_name;
 
         if (this.player) this.player.resetJoints();
         this.paused = false;
@@ -164,14 +163,14 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
     /** Sets the current animation by name from already imported animation set */
     setAnimation(
-        params: Omit<
-            BlockbenchAnimationProviderProps,
-            'animation' | 'bonesOverrides' | 'onFinish' | 'onLoopEnd'
-        >
+        animation_name: string,
+        options?: Pick<BlockbenchAnimationProviderProps, 'forceLoop' | 'connectCape'>
     ) {
-        this.restart(params.animationName);
-        this.force_loop = params.forceLoop;
-        this.connect_cape = params.connectCape ?? false;
+        this.reset(animation_name);
+
+        if (!options) return;
+        if (options.connectCape) this.connectCape = options.connectCape ?? false;
+        if (options.forceLoop) this.forceLoop = options.forceLoop;
     }
 
     private clamp(val: number, min: number, max: number): number {
@@ -211,14 +210,14 @@ export class SkinViewBlockbench extends PlayerAnimation {
     }
 
     protected animate(player: PlayerObject): void {
-        const delta = this.clock.getDelta();
+        const delta = this.clock.getDelta() * this.speed;
         this.player = player; // Save player object for future
 
-        const current_animation = this.animations[this.current_animation_name];
+        const current_animation = this.animations[this.animationName];
 
         const looped =
-            this.force_loop !== undefined
-                ? this.force_loop
+            this.forceLoop !== undefined
+                ? this.forceLoop
                 : current_animation.animation_loop;
 
         const looped_time = looped
@@ -257,7 +256,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
                         defaults[2] + -curr[2]
                     );
 
-                    if (bone === 'body' && this.connect_cape) {
+                    if (bone === 'body' && this.connectCape) {
                         const cape_defaults = defaultPositions['cape'];
                         player.cape.position.set(
                             cape_defaults[0] + curr[0],
@@ -275,8 +274,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
         const animation_iteration = Math.floor(
             old_progress / current_animation.animation_length
         );
-        if (animation_iteration > this.animation_iteration && looped) {
-            this.animation_iteration = animation_iteration;
+        if (animation_iteration > this.animationIteration && looped) {
+            this.animationIteration = animation_iteration;
             this.onLoopEnd?.(this);
         }
 
