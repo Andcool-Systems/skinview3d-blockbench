@@ -233,63 +233,45 @@ export class SkinViewBlockbench extends PlayerAnimation {
             : this.clamp(this._progress, 0, current_animation.animation_length);
 
         for (const [bone, value] of Object.entries(current_animation.bones)) {
-            if (value.rotation) {
-                const keyframes_list =
-                    current_animation.keyframes_list[bone].rotation;
+            for (const type of ['rotation', 'position'] as const) {
+                if (!value[type]) continue;
 
-                let insertion_rotation = this.findInsertPosition(
+                const keyframes_list = current_animation.keyframes_list[bone][type];
+                let insert_index = this.findInsertPosition(
                     keyframes_list!.num,
                     looped_time
                 );
-
-                if (insertion_rotation === null)
-                    insertion_rotation = keyframes_list!.num.length - 1;
-
-                const curr = this.getCurrentKeyframe(
-                    value.rotation,
-                    keyframes_list!,
-                    insertion_rotation,
-                    looped_time
-                ).map(MathUtils.degToRad);
-
-                player.skin[bone as NormalizedBonesNames].setRotationFromEuler(
-                    new Euler(curr[0], -curr[1], -curr[2], 'ZYX')
-                );
-            }
-
-            if (value.position) {
-                const keyframes_list =
-                    current_animation.keyframes_list[bone].position;
-
-                let insertion_rotation = this.findInsertPosition(
-                    keyframes_list!.num,
-                    looped_time
-                );
-
-                if (insertion_rotation === null)
-                    insertion_rotation = keyframes_list!.num.length - 1;
+                if (insert_index === null)
+                    insert_index = keyframes_list!.num.length - 1;
 
                 const curr = this.getCurrentKeyframe(
-                    value.position,
+                    value[type],
                     keyframes_list!,
-                    insertion_rotation,
+                    insert_index,
                     looped_time
                 );
 
-                const defaults = defaultPositions[bone as NormalizedBonesNames];
+                const skin_bone = player.skin[bone as NormalizedBonesNames];
 
-                player.skin[bone as NormalizedBonesNames].position.x =
-                    defaults[0] + curr[0];
-                player.skin[bone as NormalizedBonesNames].position.y =
-                    defaults[1] + curr[1];
-                player.skin[bone as NormalizedBonesNames].position.z =
-                    defaults[2] + -curr[2];
+                if (type === 'rotation') {
+                    const [x, y, z] = curr.map(MathUtils.degToRad);
+                    skin_bone.setRotationFromEuler(new Euler(x, -y, -z, 'ZYX'));
+                } else {
+                    const defaults = defaultPositions[bone as NormalizedBonesNames];
+                    skin_bone.position.set(
+                        defaults[0] + curr[0],
+                        defaults[1] + curr[1],
+                        defaults[2] + -curr[2]
+                    );
 
-                if (bone === 'body' && this.connect_cape) {
-                    const cape_defaults = defaultPositions['cape'];
-                    player.cape.position.x = cape_defaults[0] + curr[0];
-                    player.cape.position.y = cape_defaults[1] + curr[1];
-                    player.cape.position.z = cape_defaults[2] + -curr[2];
+                    if (bone === 'body' && this.connect_cape) {
+                        const cape_defaults = defaultPositions['cape'];
+                        player.cape.position.set(
+                            cape_defaults[0] + curr[0],
+                            cape_defaults[1] + curr[1],
+                            cape_defaults[2] + -curr[2]
+                        );
+                    }
                 }
             }
         }
