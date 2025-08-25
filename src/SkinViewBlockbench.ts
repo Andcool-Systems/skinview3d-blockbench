@@ -181,25 +181,54 @@ export class SkinViewBlockbench extends PlayerAnimation {
         value: Record<string, ExtendedKeyframe>,
         keyframes_list: SingleKeyframeListItem,
         insertion: number,
-        looped_time: number
+        looped_time: number,
+        loop: boolean
     ) {
         const times = keyframes_list.num;
         const labels = keyframes_list.str;
 
-        const i0 = (insertion - 1 + times.length) % times.length;
-        const i1 = insertion;
-        const i2 = (insertion + 1) % times.length;
-        const i3 = (insertion + 2) % times.length;
+        const n = times.length;
+        let i0: number, i1: number, i2: number, i3: number;
+
+        const stepBackwards = (i: number, step: number, n: number) => {
+            const _i = i - step;
+            if (_i <= 0) return n - (1 + step);
+            return _i;
+        };
+
+        if (loop) {
+            i0 = stepBackwards(insertion, 1, n);
+            i1 = insertion % n;
+            i2 = (insertion + 1) % n;
+            i3 = (insertion + 2) % n;
+        } else {
+            i0 = Math.max(insertion - 1, 0);
+            i1 = insertion;
+            i2 = Math.min(insertion + 1, n - 1);
+            i3 = Math.min(insertion + 2, n - 1);
+        }
 
         const t1 = times[i1];
-        const t2 = times[i2];
+        let t2 = times[i2];
 
         const p0 = value[labels[i0]].post!;
         const p1 = value[labels[i1]].post!;
         const p2 = value[labels[i2]].post!;
         const p3 = value[labels[i3]].post!;
 
-        const t = (looped_time - t1) / (t2 - t1);
+        let time = looped_time;
+        if (loop && t2 <= t1) {
+            const duration = times[n - 1] - times[0];
+            t2 += duration;
+            if (time < t1) time += duration;
+        }
+
+        let t: number;
+        if (t2 === t1) {
+            t = 0;
+        } else {
+            t = (time - t1) / (t2 - t1);
+        }
         const target = value[labels[i2]];
 
         if (target.lerp_mode === 'catmullrom') {
@@ -240,7 +269,8 @@ export class SkinViewBlockbench extends PlayerAnimation {
                     value[type],
                     keyframes_list!,
                     insert_index,
-                    looped_time
+                    looped_time,
+                    current_animation.animation_loop
                 );
 
                 const skin_bone = player.skin[bone as NormalizedBonesNames];
