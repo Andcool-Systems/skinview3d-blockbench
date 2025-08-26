@@ -7,7 +7,9 @@ export const defaultPositions: Record<NormalizedBonesNames | 'cape', number[]> =
     leftArm: [5, -2, 0],
     rightLeg: [-1.9, -12, -0.1],
     leftLeg: [1.9, -12, -0.1],
-    cape: [0, 8, -2]
+    cape: [0, 8, -2],
+    torso: [0, 0, 0],
+    all: [0, 0, 0]
 };
 
 export const defaultBonesOverrides: Record<string, NormalizedBonesNames> = {
@@ -16,5 +18,7 @@ export const defaultBonesOverrides: Record<string, NormalizedBonesNames> = {
     RightArm: 'rightArm',
     LeftArm: 'leftArm',
     RightLeg: 'rightLeg',
-    LeftLeg: 'leftLeg'
+    LeftLeg: 'leftLeg',
+    All: 'all',
+    Torso: 'torso'
 };

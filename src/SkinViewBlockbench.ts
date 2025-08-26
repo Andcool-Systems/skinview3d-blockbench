@@ -12,7 +12,7 @@ import {
     SingleKeyframeListItem
 } from './types';
 
-import { Clock, Euler, MathUtils } from 'three';
+import { Clock, Euler, MathUtils, Object3D } from 'three';
 import { catmullRom } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
@@ -253,6 +253,9 @@ export class SkinViewBlockbench extends PlayerAnimation {
             ? this._progress % current_animation.animation_length
             : this.clamp(this._progress, 0, current_animation.animation_length);
 
+        const torso_offset = { rotation: [0, 0, 0], position: [0, 0, 0] };
+        const all_offset = { rotation: [0, 0, 0], position: [0, 0, 0] };
+
         for (const [bone, value] of Object.entries(current_animation.bones)) {
             for (const type of ['rotation', 'position'] as const) {
                 if (!value[type]) continue;
@@ -273,17 +276,63 @@ export class SkinViewBlockbench extends PlayerAnimation {
                     current_animation.animation_loop
                 );
 
-                const skin_bone = player.skin[bone as NormalizedBonesNames];
+                if (bone === 'all') {
+                    if (type === 'rotation') {
+                        all_offset.rotation = curr.map(MathUtils.degToRad);
+                    } else {
+                        all_offset.position = curr;
+                    }
+                    continue;
+                }
+
+                if (bone === 'torso') {
+                    if (type === 'rotation') {
+                        torso_offset.rotation = curr.map(MathUtils.degToRad);
+                    } else {
+                        torso_offset.position = curr;
+                    }
+                    continue;
+                }
+
+                const skin_bone = player.skin[
+                    bone as keyof typeof player.skin
+                ] as Object3D;
+
+                const is_torso = ['rightArm', 'leftArm', 'body', 'head'].includes(
+                    bone
+                );
 
                 if (type === 'rotation') {
                     const [x, y, z] = curr.map(MathUtils.degToRad);
-                    skin_bone.setRotationFromEuler(new Euler(x, -y, -z, 'ZYX'));
+                    skin_bone.setRotationFromEuler(
+                        new Euler(
+                            x +
+                                all_offset.rotation[0] +
+                                (is_torso ? torso_offset.rotation[0] : 0),
+                            -y +
+                                all_offset.rotation[1] +
+                                (is_torso ? torso_offset.rotation[1] : 0),
+                            -z +
+                                all_offset.rotation[2] +
+                                (is_torso ? torso_offset.rotation[2] : 0),
+                            'ZYX'
+                        )
+                    );
                 } else {
                     const defaults = defaultPositions[bone as NormalizedBonesNames];
                     skin_bone.position.set(
-                        defaults[0] + curr[0],
-                        defaults[1] + curr[1],
-                        defaults[2] + -curr[2]
+                        defaults[0] +
+                            curr[0] +
+                            all_offset.position[0] +
+                            (is_torso ? torso_offset.position[0] : 0),
+                        defaults[1] +
+                            curr[1] +
+                            all_offset.position[1] +
+                            (is_torso ? torso_offset.position[1] : 0),
+                        defaults[2] +
+                            -curr[2] +
+                            all_offset.position[2] +
+                            (is_torso ? torso_offset.position[2] : 0)
                     );
 
                     if (bone === 'body' && this.connectCape) {

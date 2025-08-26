@@ -79,7 +79,9 @@ export type NormalizedBonesNames =
     | 'leftArm'
     | 'rightArm'
     | 'leftLeg'
-    | 'rightLeg';
+    | 'rightLeg'
+    | 'all'
+    | 'torso';
 
 export interface KeyframesList {
     rotation?: SingleKeyframeListItem;
