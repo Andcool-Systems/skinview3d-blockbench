@@ -368,12 +368,16 @@ export class SkinViewBlockbench extends PlayerAnimation {
         let left = 0;
         let right = arr.length - 1;
 
-        if (target <= arr[0] || target >= arr[arr.length - 1]) {
+        if (target < arr[0] || target > arr[arr.length - 1]) {
             return null;
         }
 
         while (left <= right) {
             const mid = Math.floor((left + right) / 2);
+
+            if (arr[mid] === target) {
+                return mid;
+            }
 
             if (arr[mid] < target && target < arr[mid + 1]) {
                 return mid;
