@@ -98,9 +98,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
         this._progress = 0;
         this.animationIteration = 0;
-
         this.animationName = _animation_name;
-
         this.paused = false;
     }
 
