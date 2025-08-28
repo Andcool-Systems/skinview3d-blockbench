@@ -101,8 +101,12 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
         this.animationName = _animation_name;
 
-        if (this.player) this.player.resetJoints();
         this.paused = false;
+    }
+
+    /** Resets player' joints */
+    resetPose() {
+        this.player.resetJoints();
     }
 
     /** Prepare single animation */
