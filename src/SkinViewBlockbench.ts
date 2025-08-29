@@ -256,6 +256,13 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
         torso.position.y = 8;
         this.torsoWrapper.add(torso);
+
+        if (this.connectCape) {
+            const cape = new Group();
+            cape.attach(this.player.cape);
+            cape.position.y = -1;
+            this.player.skin.body.add(cape);
+        }
     }
 
     protected animate(player: PlayerObject): void {
@@ -318,15 +325,6 @@ export class SkinViewBlockbench extends PlayerAnimation {
                         defaults[1] + curr[1],
                         defaults[2] + -curr[2]
                     );
-
-                    if (bone === 'body' && this.connectCape) {
-                        const cape_defaults = defaultPositions['cape'];
-                        player.cape.position.set(
-                            cape_defaults[0] + curr[0],
-                            cape_defaults[1] + curr[1],
-                            cape_defaults[2] + -curr[2]
-                        );
-                    }
                 }
             }
         }
