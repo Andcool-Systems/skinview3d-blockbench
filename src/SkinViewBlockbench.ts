@@ -148,7 +148,10 @@ export class SkinViewBlockbench extends PlayerAnimation {
             const rotation_keys = Object.keys(value.rotation ?? {});
             const position_keys = Object.keys(value.position ?? {});
             keyframes_list[normalizedBoneName] = {
-                rotation: { str: rotation_keys, num: rotation_keys.map(parseFloat) },
+                rotation: {
+                    str: rotation_keys,
+                    num: rotation_keys.map(parseFloat)
+                },
                 position: {
                     str: position_keys,
                     num: position_keys.map(parseFloat)
@@ -179,6 +182,12 @@ export class SkinViewBlockbench extends PlayerAnimation {
 
     private clamp(val: number, min: number, max: number): number {
         return Math.max(min, Math.min(val, max));
+    }
+
+    private resolveFrame(frame: ExtendedKeyframe): number[] {
+        if (frame.pre) return frame.pre;
+        if (frame.post) return frame.post;
+        return [0, 0, 0];
     }
 
     private getCurrentKeyframe(
@@ -215,10 +224,10 @@ export class SkinViewBlockbench extends PlayerAnimation {
         const t1 = times[i1];
         let t2 = times[i2];
 
-        const p0 = value[labels[i0]].post!;
-        const p1 = value[labels[i1]].post!;
-        const p2 = value[labels[i2]].post!;
-        const p3 = value[labels[i3]].post!;
+        const k0 = value[labels[i0]];
+        const k1 = value[labels[i1]];
+        const k2 = value[labels[i2]];
+        const k3 = value[labels[i3]];
 
         let time = looped_time;
         if (loop && t2 <= t1) {
@@ -233,18 +242,25 @@ export class SkinViewBlockbench extends PlayerAnimation {
         } else {
             t = (time - t1) / (t2 - t1);
         }
-        const target = value[labels[i2]];
 
-        if (target.lerp_mode === 'catmullrom') {
+        const start = this.resolveFrame(k1);
+        const end = this.resolveFrame(k2);
+
+        if (k2.lerp_mode === 'catmullrom') {
+            const p0 = this.resolveFrame(k0);
+            const p1 = start;
+            const p2 = end;
+            const p3 = this.resolveFrame(k3);
             return [0, 1, 2].map(i => catmullRom(p0[i], p1[i], p2[i], p3[i], t));
         } else {
-            return [0, 1, 2].map(i => p1[i] + (p2[i] - p1[i]) * t);
+            return [0, 1, 2].map(i => start![i] + (end[i] - start![i]) * t);
         }
     }
 
     /** Group body parts to single torso */
     private initTorso() {
-        if (this.torsoWrapper) return;
+        if (this.torsoWrapper || !this.animations[this.animationName].bones.torso)
+            return;
         this.torsoWrapper = new Group();
         this.player.add(this.torsoWrapper!);
 
@@ -309,8 +325,11 @@ export class SkinViewBlockbench extends PlayerAnimation {
                     case 'torso':
                         skin_bone = this.torsoWrapper!;
                         break;
+                    case 'cape':
+                        skin_bone = this.player.cape;
+                        break;
                     default:
-                        skin_bone = player.skin[
+                        skin_bone = this.player.skin[
                             bone as keyof typeof player.skin
                         ] as Object3D;
                 }

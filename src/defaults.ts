@@ -1,6 +1,6 @@
 import { NormalizedBonesNames } from './types';
 
-export const defaultPositions: Record<NormalizedBonesNames | 'cape', number[]> = {
+export const defaultPositions: Record<NormalizedBonesNames, number[]> = {
     head: [0, 0, 0],
     body: [0, -6, 0],
     rightArm: [-5, -2, 0],

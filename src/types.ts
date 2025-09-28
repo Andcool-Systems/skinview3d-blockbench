@@ -39,6 +39,9 @@ export interface BonesOverrides {
     leftArm?: string;
     rightLeg?: string;
     rightArm?: string;
+    torso?: string;
+    all?: string;
+    cape?: string;
 }
 
 /** Type of .json animation file */
@@ -70,7 +73,7 @@ export type SingleKeyframeListItem = {
 export interface ExtendedKeyframe {
     pre?: number[];
     post?: number[];
-    lerp_mode: string;
+    lerp_mode?: string;
 }
 
 export type NormalizedBonesNames =
@@ -81,7 +84,8 @@ export type NormalizedBonesNames =
     | 'leftLeg'
     | 'rightLeg'
     | 'all'
-    | 'torso';
+    | 'torso'
+    | 'cape';
 
 export interface KeyframesList {
     rotation?: SingleKeyframeListItem;
