@@ -41,6 +41,9 @@ export class SkinViewBlockbench extends PlayerAnimation {
     /** Currently playing animation iteration */
     animationIteration: number = 0;
 
+    /** Reverse animation */
+    reversed: boolean = false;
+
     /** Player object */
     private player!: PlayerObject;
 
@@ -73,6 +76,7 @@ export class SkinViewBlockbench extends PlayerAnimation {
         this.onLoopEnd = params.onLoopEnd;
         this.forceLoop = params.forceLoop;
         this.connectCape = params.connectCape ?? false;
+        this.reversed = params.reversed ?? false;
         this.clock = new Clock();
 
         // Initialize all animations
@@ -107,6 +111,11 @@ export class SkinViewBlockbench extends PlayerAnimation {
     /** Resets player' joints */
     resetPose() {
         this.player.resetJoints();
+    }
+
+    /** Get list of available animations */
+    get animationNames() {
+        return Object.keys(this.animations);
     }
 
     /** Prepare single animation */
@@ -171,13 +180,14 @@ export class SkinViewBlockbench extends PlayerAnimation {
     /** Sets the current animation by name from already imported animation set */
     setAnimation(
         animation_name: string,
-        options?: Pick<BlockbenchAnimationProviderProps, 'forceLoop' | 'connectCape'>
+        options?: Pick<BlockbenchAnimationProviderProps, 'forceLoop' | 'connectCape' | 'reversed'>
     ) {
         this.reset(animation_name);
 
         if (!options) return;
         if (options.connectCape) this.connectCape = options.connectCape ?? false;
         if (options.forceLoop) this.forceLoop = options.forceLoop;
+        if (options.reversed) this.reversed = options.reversed;
     }
 
     private clamp(val: number, min: number, max: number): number {
@@ -293,9 +303,12 @@ export class SkinViewBlockbench extends PlayerAnimation {
                 ? this.forceLoop
                 : current_animation.animation_loop;
 
-        const looped_time = looped
+        let looped_time = looped
             ? this._progress % current_animation.animation_length
             : this.clamp(this._progress, 0, current_animation.animation_length);
+
+        if (this.reversed)
+            looped_time = current_animation.animation_length - looped_time;
 
         for (const [bone, value] of Object.entries(current_animation.bones)) {
             for (const type of ['rotation', 'position'] as const) {

@@ -29,6 +29,9 @@ export interface BlockbenchAnimationProviderProps {
 
     /** Callback for animation loop finished */
     onLoopEnd?: (animation?: SkinViewBlockbench) => unknown;
+
+    /** Reverse animation */
+    reversed?: boolean
 }
 
 /** Overrides for bones names */
