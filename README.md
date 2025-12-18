@@ -6,7 +6,6 @@ Allows you to load and play `.animation.json` files exported from Blockbench dir
 This package provides the `SkinViewBlockbench` class, which interprets and dynamically plays animations on Minecraft skin models.
 
 <img src="readme/preview.gif" style="width: 100%" />  
----
 
 ## 📦 Installation
 
