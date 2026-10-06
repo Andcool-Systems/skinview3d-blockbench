@@ -12,7 +12,7 @@ import {
     SingleKeyframeListItem
 } from './types';
 
-import { Clock, Euler, Group, MathUtils, Object3D } from 'three';
+import { Clock, Euler, Group, MathUtils, Matrix4, Object3D } from 'three';
 import { catmullRom } from './lerp';
 import { defaultBonesOverrides, defaultPositions } from './defaults';
 
@@ -280,14 +280,34 @@ export class SkinViewBlockbench extends PlayerAnimation {
         torso.attach(this.player.skin.rightArm);
         torso.attach(this.player.skin.body);
 
-        torso.position.y = 8;
+        /// FIX: Fixed torso positioning after attaching
+        /// Issue #1, fixed by @stevehsudrawing
+        this.player.skin.head.position.fromArray(defaultPositions.head);
+        this.player.skin.leftArm.position.fromArray(defaultPositions.leftArm);
+        this.player.skin.rightArm.position.fromArray(defaultPositions.rightArm);
+        this.player.skin.body.position.fromArray(defaultPositions.body);
+
+        torso.position.copy(this.player.skin.position);
+
         this.torsoWrapper.add(torso);
 
         if (this.connectCape) {
             const cape = new Group();
+
+            /// FIX: Fixed cape positioning relative body
+            /// Issue #1, fixed by @stevehsudrawing
+
+            /// FIXME: Cape connects only when animating `Torso`, not `Body`
+            const restRotation = this.player.cape.rotation.clone();
             cape.attach(this.player.cape);
-            cape.position.y = -1;
+            this.player.cape.rotation.copy(restRotation);
+
             this.player.skin.body.add(cape);
+            this.player.skin.body.updateWorldMatrix(true, false);
+            new Matrix4()
+                .copy(this.player.skin.body.matrixWorld)
+                .invert()
+                .decompose(cape.position, cape.quaternion, cape.scale);
         }
     }
 
